@@ -1,0 +1,88 @@
+Puppet server installation
+
+1. vi /etc/sysconfig/network
+hostname = puppet.mydomain.local
+
+vi /etc/resolv.conf
+remove
+domainname
+localhost
+
+2. yum install ntp -y
+
+3. install the puppet repo
+rpm -ivh https://yum.puppetlabs.com/puppetlabs-release-el-6.noarch.rpm
+
+4. vi /etc/yum.repos.d/puppetlabs.repo
+Under the [puppetlabs-devel]
+change enabled=0 to enabled=1
+
+5. yum install puppet-server
+
+6. vi /etc/puppet/puppet.conf
+dns_alt_names = puppet puppet.mydomain.local
+
+7. Next set the certificate
+puppet master --verbose --no-daemonize
+
+8. setup manifests
+cd /etc/puppet/environments
+mkdir -p production/manifests
+mkdir -p production/modules
+
+mkdir -p development/manifests
+mkdir -p development/modules
+
+9. vi /etc/puppet/puppet.conf
+
+#tell puppet whether the environments directories
+     environmentpath = $confdir/environments
+
+10. service puppetmaster start 
+and stop it
+service puppetmaster stop
+
+11. yum install httpd-devel mod_ssl ruby-devel rubygems gcc
+yum install gcc-c++ curl-devel openssl-devel
+
+12. gem install rack passenger
+
+13. passenger-install-apache2-module
+
+14.  edit your Apache configuration file, and add these lines:
+    LoadModule passenger_module /usr/lib/ruby/gems/1.8/gems/passenger-5.0.21/buildout/apache2/mod_passenger.so
+     <IfModule mod_passenger.c>
+     PassengerRoot /usr/lib/ruby/gems/1.8/gems/passenger-5.0.21
+     PassengerDefaultRuby /usr/bin/ruby
+    </IfModule>
+
+	
+15. create a virtual host
+vi /etc/httpd/conf.d/puppet.conf
+http://docs.puppetlabs.com/guides/passenger.html
+
+Comment out the below lines
+#SSLCARevocationCheck        chain
+
+UPdate SSL Certificate
+
+    SSLCertificateFile      /var/lib/puppet/ssl/certs/puppet.mydomain.local.pem
+    SSLCertificateKeyFile   /var/lib/puppet/ssl/private_keys/puppet.mydomain.local.pem
+    SSLCertificateChainFile /var/lib/puppet/ssl/ca/ca_crt.pem
+    SSLCACertificateFile    /var/lib/puppet/ssl/ca/ca_crt.pem
+    SSLCARevocationFile     /var/lib/puppet/ssl/ca/ca_crl.pem
+
+	puppet.localdomain.pem
+create dir /usr/share/puppet/rack/puppetmasterd/public
+mkdir -p /usr/share/puppet/rack/puppetmasterd/public
+mkdir -p /usr/share/puppet/rack/puppetmasterd/tmp
+
+16. cp /usr/share/puppet/ext/rack/config.ru /usr/share/puppet/rack/puppetmasterd
+chown puppet:puppet /usr/share/puppet/rack/puppetmasterd/config.ru
+
+17. vi /etc/httpd/conf/httpd.conf
+ServerName puppet.mydomain.local:80
+
+18. service httpd restart
+
+/File[/var/lib/puppet/lib]: Could not evaluate: Could not retrieve file metadata for puppet://puppet/plugins: Connection refused - connect(2)

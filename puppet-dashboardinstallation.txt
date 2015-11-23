@@ -1,0 +1,81 @@
+Puppet Dashboard installation
+
+1. yum install puppet-dashboard
+2. yum install mysql-server
+
+3. Then create the database
+
+CREATE DATABASE puppet_dashboard CHARACTER SET utf8;
+CREATE USER 'puppet_user'@'localhost' IDENTIFIED BY 'puppetpass';
+GRANT ALL PRIVILEGES ON puppet_dashboard.* to 'puppet_user'@'localhost';
+
+4. Update the db details in database.yml
+vi /usr/share/puppet-dashboard/config/database.yml
+
+production:
+  database: puppet_dashboard
+  username: puppet_user
+  password: puppetpass
+  encoding: utf8
+  adapter: mysql
+  host: localhost
+
+5. vi /etc/my.cnf
+ADD
+max_allowed_packet=32M
+or
+login to mysql and set this command
+set global max_allowed_packet = 33554432;
+
+6.cd /usr/share/puppet-dashboard/
+rake gems:refresh_specs
+
+7. rake RAILS_ENV=production db:migrate
+
+8. cp /usr/share/puppet-dashboard/ext/passenger/dashboard-vhost.conf /etc/httpd/conf.d/puppet-dash.conf
+vi /etc/httpd/conf.d/puppet-dash.conf
+
+comment out 
+#LoadModule passenger_module
+
+update the PassengerRoot
+
+comment out 
+#RailsAutoDetect On
+
+#Add
+Listen 3000
+
+#change 
+<VirtualHost *:80> to <VirtualHost *:3000>
+
+ServerName puppet.mydomain.local
+ServerAlias puppet
+
+  ErrorLog /var/log/httpd/puppet.dashboard_error.log
+  LogLevel warn
+  CustomLog /var/log/httpd/puppet.dashboard_access.log combined
+
+9. /etc/puppet/puppet.conf
+Under the [Main]
+#Configure puppet to talk to puppet dashboard
+    reports = store, http
+    reporturl = http://puppet.mydomain.local:3000/reports/upload
+    node_terminus = exec
+    external_nodes = /usr/bin/env PUPPET_DASHBOARD_URL=http://puppet.mydomain.local:3000 /usr/share/puppet-dashboard/bin/external_node
+
+[Agent]
+    report = true
+
+10. service puppet-dashboard start
+
+11. puppet agent --test
+
+12. chmod 0666 /usr/share/puppet-dashboard/log/*
+
+13. sudo -u puppet-dashboard env RAILS_ENV=production /usr/share/puppet-dashboard/script/delayed_job -p dashboard -n 4 -m start
+
+
+15:40:53
+
+server-labs.blogspot.in/2013/08/installing-puppet-master-dashboard-and.html
